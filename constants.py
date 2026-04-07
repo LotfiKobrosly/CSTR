@@ -1,0 +1,10 @@
+import numpy as np
+
+RANDOM_SEED = 42
+RANDOM_STATE = np.random.default_rng(seed=RANDOM_SEED)
+
+HALF_LIFE_DIVIDER = 10
+
+LEARNING_RATE = 0.1
+
+RELEVANCE_THRESHOLD = 0.3
