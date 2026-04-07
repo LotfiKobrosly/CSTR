@@ -1,0 +1,6 @@
+./cstr
+*.png
+./__pycache__
+*.ipynb
+./anaconda_*
+*.sh
