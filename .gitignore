@@ -1,7 +1,7 @@
-./cstr*
+cstr*
 *.png
-./__pycache*
+__pycache*
 *.ipynb
-./anaconda_*
+anaconda_*
 *.sh
 scratch*
