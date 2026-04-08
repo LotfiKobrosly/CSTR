@@ -4,21 +4,23 @@ Setup a CSTR environment with a setpoint change (see https://maximilianb2.github
 
 import time
 import numpy as np
+import pandas as pd
 import pcgym
 import matplotlib.pyplot as plt
 
 from cnmcts import cnmcts
 from cnrpa import run_cnrpa
+from random_walk import random_walk
 from models import *
 from environment import EnvironmentWrapper
 
 
 if __name__ == "__main__":
 
+    # Running algorithms on the CSTR problem
     # Global inputs
     T = 25
     n_steps = 50
-    penalty_factor = 5
 
     # CSTR problem
     problem = "cstr"
@@ -32,122 +34,113 @@ if __name__ == "__main__":
         "problem": problem,
     }
 
-    execution_time = 0
+    # Iterating through different parameters
+    penalty_factor_list = [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
+    nesting_levels = {
+        1: {"bandwidth": 25, "n_policies": 500},
+        2: {"bandwidth": 10, "n_policies": 25},
+    }
 
-    # cNMCTS
-    ## Environment
-    environment, observation_space = get_environment(**inputs)
-    environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
-    print("Environment steup for cNMCTS")
-    start_time = time.time()
-    ## Running cNMCTS
-    sequence_cnmcts, actions_cnmcts, score_cnmcts = cnmcts(
-        environment,
-        level=2,
-        bandwidth=5,
+    # Enumerating algorithms
+    algorithms = dict()
+    for level in nesting_levels.keys():
+        algorithms["cNMCTS level " + str(level)] = {
+            "function": cnmcts,
+            "parameters": {"level": level, "bandwidth": nesting_levels[level]["bandwidth"]}
+        }
+        algorithms["Gaussian cNRPA level " + str(level)] = {
+            "function": run_cnrpa,
+            "parameters" : {
+                "level": level,
+                "n_policies": nesting_levels[level]["n_policies"],
+                "policy_type": "gaussian",
+            }
+        }
+        algorithms["By Region cNRPA level " + str(level)] = {
+            "function": run_cnrpa,
+            "parameters" : {
+                "level": level,
+                "n_policies": nesting_levels[level]["n_policies"],
+                "policy_type": "by_region",
+            }
+        }
+
+    # Number of iterations per algorithm
+    n_iterations = 2
+
+    # Storing values
+    best_scores = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
+    mean_scores = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
+    scores_std = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
+    average_execution_times = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
+
+    # Iterating over penalty factors
+    for penalty_id, penalty_factor in enumerate(penalty_factor_list):
+        print("\n\nPenalty factor:", penalty_factor)
+        # Environment
+        environment, observation_space = get_environment(**inputs)
+        environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
+
+        # Iterating over algorithms
+        for algorithm_id, algorithm in enumerate(algorithms.keys()):
+            print("\nRunning ", algorithm)
+            # Local storage
+            scores_list = list()
+            times_list = list()
+
+            # Running n_iterations of the same algorithm
+            for iteration in range(n_iterations):
+                print("Iteration n°", iteration + 1)
+                environment.reset()
+                start_time = time.time()
+                sequence, actions, score = algorithms[algorithm]["function"](
+                    environment, **algorithms[algorithm]["parameters"]
+                )
+                times_list.append(time.time() - start_time)
+                scores_list.append(score)
+            best_scores[penalty_id, algorithm_id] = min(scores_list)
+            mean_scores[penalty_id, algorithm_id] = np.mean(scores_list)
+            scores_std[penalty_id, algorithm_id] = np.std(scores_list)
+            average_execution_times[penalty_id, algorithm_id] = np.mean(times_list)
+
+        # Running random walk, by giving it the maximum time needed by any algorithm run
+        total_execution_time = max(average_execution_times[penalty_id, :-1])
+        average_execution_times[penalty_id, -1] = total_execution_time
+        scores_list = list()
+        print("\nRandom Walk")
+        for iteration in range(n_iterations):
+            print("Iteration n°", iteration + 1)
+            start_time = time.time()
+            best_score = np.inf
+            while (time.time() - start) < total_execution_time:
+                sequence, actions, score = random_walk(environment)
+                if score < best_score:
+                    best_score = score
+            scores_list.append(best_score)
+        best_scores[penalty_id, -1] = min(scores_list)
+        mean_scores[penalty_id, -1] = np.mean(scores_list)
+        scores_std[penalty_id, -1] = np.std(scores_list)
+
+    indices = penalty_factor_list
+    columns = list(algorithms.keys()) + ["Random Walk"]
+    writer = pd.ExcelWriter("Aggregated_scores_by_penalty_factor.xlsx", engine="xlsxwriter")
+
+    mean_dataframe = pd.DataFrame(
+        data=mean_scores, columns=columns, index=penalty_factor_list
     )
-    total_time = time.time() - start_time
-    if total_time > execution_time:
-        execution_time = total_time
-    sequence_cnmcts = [
-        element * (observation_space["high"] - observation_space["low"]) / 2
-        + (observation_space["high"] + observation_space["low"]) / 2
-        for element in sequence_cnmcts
-    ]
-
-    print("Final score for cNMCTS:", "{:.3f}".format(score_cnmcts))
-    print("Total time for cNMCTS:", "{:.3f}".format(total_time))
-
-    # cNRPA with gaussian policy
-    ## Environment
-    environment, observation_space = get_environment(**inputs)
-    environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
-    print("Environment steup for gaussian cNRPA")
-    ## Runnincg cNRPA
-    start_time = time.time()
-    sequence_cnrpa_gaussian, actions_cnrpa_gaussian, score_cnrpa_gaussian = run_cnrpa(
-        environment,
-        level=2,
-        n_policies=25,
-        policy_type="gaussian",
-        observation_space=observation_space,
+    std_dataframe = pd.DataFrame(
+        data=scores_std, columns=columns, index=penalty_factor_list
+    )
+    min_dataframe = pd.DataFrame(
+        data=best_scores, columns=columns, index=penalty_factor_list
+    )
+    time_dataframe = pd.DataFrame(
+        data=average_execution_times, columns=columns, index=penalty_factor_list
     )
 
-    total_time = time.time() - start_time
-    if total_time > execution_time:
-        execution_time = total_time
-    sequence_cnrpa_gaussian = [
-        element * (observation_space["high"] - observation_space["low"]) / 2
-        + (observation_space["high"] + observation_space["low"]) / 2
-        for element in sequence_cnrpa_gaussian
-    ]
+    mean_dataframe.to_excel(writer, sheet_name="Mean score")
+    std_dataframe.to_excel(writer, sheet_name="Standard deviation of score")
+    min_dataframe.to_excel(writer, sheet_name="Min score")
+    time_dataframe.to_excel(writer, sheet_name="Average time")
 
-    print("Final score for cNRPA gaussian:", "{:.3f}".format(score_cnrpa_gaussian))
-    print("Total time for cNRPA gaussian:", "{:.3f}".format(total_time))
-
-
-    # cNRPA with by region policy
-    ## Environment
-    environment, observation_space = get_environment(**inputs)
-    environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
-    print("Environment steup for by region cNRPA")
-    ## Runnincg cNRPA
-    start_time = time.time()
-    sequence_cnrpa_by_region, actions_cnrpa_by_region, score_cnrpa_by_region = run_cnrpa(
-        environment,
-        level=2,
-        n_policies=25,
-        policy_type="by_region",
-        observation_space=observation_space,
-    )
-
-    total_time = time.time() - start_time
-    if total_time > execution_time:
-        execution_time = total_time
-    sequence_cnrpa_by_region = [
-        element * (observation_space["high"] - observation_space["low"]) / 2
-        + (observation_space["high"] + observation_space["low"]) / 2
-        for element in sequence_cnrpa_by_region
-    ]
-
-    print("Final score for cNRPA by region:", "{:.3f}".format(score_cnrpa_by_region))
-    print("Total time for cNRPA by region:", "{:.3f}".format(total_time))
-
-    # Random Walk
-    ## Environment
-    environment, observation_space = get_environment(**inputs)
-    environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
-    print("Environment steup for Random Walk")
-    # Running Random Walk
-    start_time = time.time()
-    random_walk_score = np.inf
-    while time.time() - start_time < execution_time:
-        done = False
-        environment.reset()
-        while not environment.is_final():
-            environment.step(environment.sample_random_action())
-        score = environment.score
-        if score < random_walk_score:
-            random_walk_score = score
-            random_walk_sequence = environment.sequence
-            random_walk_actions = environment.actions
-    total_time = time.time() - start_time
-    print("Final score for Randsom Walk:", "{:.3f}".format(random_walk_score))
-    print("Total time for Random Walk:", "{:.3f}".format(total_time))
-
-    figure, axes = plt.subplots(4, 3, layout="constrained")
-    sequences = [sequence_cnmcts, sequence_cnrpa_gaussian, sequence_cnrpa_by_region, random_walk_sequence]
-    for counter, algorithm in enumerate(["cNMCTS", "Gaussian_cNRPA", "By_Region_cNRPA", "Random Walk"]):
-        current_axe = axes[counter]
-        plot_1, plot_2, plot_3 = list(), list(), list()
-        for element in sequences[counter]:
-            plot_1.append(element[0])
-            plot_2.append(element[1])
-            plot_3.append(element[2])
-        current_axe[0].plot(plot_1)
-        current_axe[1].plot(plot_2)
-        current_axe[2].plot(plot_3)
-        current_axe[0].set_title("$C_A$ of " + algorithm)
-        current_axe[1].set_title("T of " + algorithm)
-        current_axe[2].set_title("Setpoints of $C_A$")
-    plt.show()
+    writer.close()

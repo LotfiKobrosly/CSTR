@@ -163,7 +163,7 @@ def cnrpa(
     full_area: float = None,
 ):
     if level == 0:
-        sampling_radius = np.exp(-current_iteration / (n_policies * HALF_LIFE_DIVIDER))
+        sampling_radius = np.exp(-current_iteration / (n_policies / HALF_LIFE_DIVIDER))
         environment.reset()
         while not environment.is_final():
         

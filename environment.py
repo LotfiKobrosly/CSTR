@@ -31,7 +31,17 @@ class EnvironmentWrapper:
         return self.done or self.current_timestamp >= self.horizon
 
     def reset(self):
-        self.environment.reset()
+        observation, info = self.environment.reset()
+        self.current_state = self.code(observation)
+        self.sequence = [self.current_state]
+        self.best_sequence = [self.current_state]
+        self.actions = list()
+        self.best_actions = list()
+        self.states_actions = dict()
+        self.current_timestamp = 0
+        self.best_score = np.inf
+        self.done = False
+        self.score = 0
 
     def truncate_observation(self, observation):
         for component_index, component in enumerate(observation):
@@ -51,7 +61,7 @@ class EnvironmentWrapper:
             penalty = 0
         if isinstance(action, np.ndarray):
             action = action.reshape(-1)
-        
+
         self.actions.append(action)
         self.current_timestamp += 1
         self.done = terminated
