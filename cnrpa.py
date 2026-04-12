@@ -5,6 +5,7 @@ import numpy as np
 from environment import EnvironmentWrapper
 from continuous_dictionary import *
 from gaussian_kernel import GaussianKernel
+from models import code
 from constants import RANDOM_STATE, RELEVANCE_THRESHOLD, HALF_LIFE_DIVIDER
 
 
@@ -42,12 +43,15 @@ def subdivide_region(region: tuple):
     return list(itertools.product(*tuple(new_bounds)))
 
 
-def instantiate_policy(policy_type: str = "by_region", kernel_radius=None):
+def instantiate_policy(policy_type: str = "by_region", kernel_radius: float = None, temporal_kernel_radius: float = None):
     if policy_type == "gaussian":
         assert not (
             kernel_radius is None
         ), "Value of kernel_radius must be specified when Gaussian policy is chosen"
-        return ContinuousGaussianDictionary(kernel_radius)
+        assert not (
+            kernel_radius is None
+        ), "Value of kernel_radius must be specified when Gaussian policy is chosen"
+        return ContinuousGaussianDictionary(kernel_radius, temporal_kernel_radius)
     elif policy_type == "by_region":
         return ContinuousByRegionDictionary()
     else:
@@ -68,11 +72,10 @@ def adapt_policy(
         ), "'n_visits' and 'full_area' must be defined"
 
         # Update number of visits per regions
-        for region in n_visits.keys():
-            for point in sequence[:-1]:
-                if point_is_in_region(point, region):
+        for timestamp, point in enumerate(sequence[:-1]):
+            for region in n_visits.keys():
+                if point_is_in_region((*point, timestamp), region):
                     n_visits[region]["n_visits"] += 1
-                    break
 
         # Subdivie regions if necessary
         temporary_n_visits = deepcopy(n_visits)
@@ -95,20 +98,25 @@ def adapt_policy(
                 del n_visits[region]
 
         # Adapt policy
-        ## Going through the trajectory, affecting them to their corresponding regions
-        regional_division_of_points = {key: list() for key in policy.keys()}
-        for point_index, point in enumerate(sequence[:-1]):
-            for key in regional_division_of_points.keys():
-                if point_is_in_region(point, key):
-                    regional_division_of_points[key].append(actions[point_index])
+        ## Conglomerating actions chosen in each region
+        regional_subdivisions_new_moves = {region: list() for region in policy.keys()}
+        for region in regional_subdivisions_new_moves.keys():
+            for timestamp in range(int(region[0][-1]), min(int(region[1][-1]), len(actions) - 1)):
+                if point_is_in_region((*sequence[timestamp], timestamp), region):
+                    try:
+                        regional_subdivisions_new_moves[region].append(actions[timestamp])
+                    except IndexError:
+                        print("Index:", timestamp)
+                        print("Range:", int(region[0][-1]), int(region[1][-1]))
+                        print("N° actions:", len(actions))
+                        raise IndexError("Index out of range")
+            regional_subdivisions_new_moves[region] = np.mean(regional_subdivisions_new_moves[region], axis=0)
 
-        ## Changing the values of teh policy
-        for region in regional_division_of_points.keys():
-            whole_list = list(regional_division_of_points[region])
-            if whole_list:
-                policy[region] += learning_rate * (
-                    np.mean(whole_list, axis=0) - policy[region]
-                )
+        ## Changing values
+        for timestamp, point in enumerate(sequence[:-1]):
+            for key in policy.keys():
+                if point_is_in_region((*point, timestamp), key):
+                    policy[region] += learning_rate * (regional_subdivisions_new_moves[key] - policy[region])
 
     elif isinstance(policy, ContinuousGaussianDictionary):
         if policy:
@@ -141,7 +149,6 @@ def adapt_policy(
                             new_move = np.array(list(actions)).T @ weights
                         except:
                             for action in actions:
-
                                 print(action)
                             raise ValueError("Whatever")
                         policy[state] += learning_rate * (new_move - policy[state])
@@ -161,15 +168,16 @@ def cnrpa(
     n_visits: dict = None,
     current_iteration: int = 0,
     full_area: float = None,
+    half_life_divider: int = None,
 ):
     if level == 0:
-        sampling_radius = np.exp(-current_iteration / (n_policies / HALF_LIFE_DIVIDER))
+        sampling_radius = np.exp(-current_iteration / (n_policies / half_life_divider))
         environment.reset()
         while not environment.is_final():
         
             if len(policy) > 0:
                 action = RANDOM_STATE.normal(
-                    loc=policy[environment.code(environment.current_state)],
+                    loc=policy[(*code(environment.current_state), environment.current_timestamp)],
                     scale=sampling_radius,
                 )
             else:
@@ -199,6 +207,7 @@ def cnrpa(
                 new_n_visits,
                 iteration,
                 full_area,
+                half_life_divider,
             )
             if score < best_score:
                 best_score = score
@@ -225,21 +234,26 @@ def run_cnrpa(
     n_policies: int = 100,
     policy_type: str = "by_region",
     observation_space: dict = None,
+    half_life_divider: int = 10,
 ):
-    policy = instantiate_policy(policy_type, kernel_radius=0.2)
+    dimension = len(environment.current_state)
+    kernel_radius = 0.3
+    temporal_kernel_radius = 0.05 * environment.horizon
+    policy = instantiate_policy(policy_type, kernel_radius=kernel_radius, temporal_kernel_radius=temporal_kernel_radius)
     if policy_type == "by_region":
+
         start_region = (
-            (-2, -2, -2), (2, 2, 2)
+            tuple([-2 for _ in range(dimension)] + [0]),
+            tuple([2 for _ in range(dimension)] + [environment.horizon]),
         )
+        n_visits = dict()
         policy[start_region] = RANDOM_STATE.uniform(-1, 1)
-        n_visits = {
-            start_region : {"n_visits": 0, "threshold": 1}
-        }
+        n_visits[start_region] = {"n_visits": 0, "threshold": 1}
         full_area = get_region_area(start_region)
     else:
         n_visits = None
         full_area = None
     best_score, best_sequence, best_actions = cnrpa(
-        environment, level, n_policies, policy, n_visits, 0, full_area
+        environment, level, n_policies, policy, n_visits, 0, full_area, half_life_divider
     )
     return best_sequence, best_actions, best_score

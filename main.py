@@ -25,20 +25,47 @@ if __name__ == "__main__":
     # CSTR problem
     problem = "cstr"
     initial_state = np.array([0.8, 330, 0.8])
+    set_points = {
+        "Ca": [0.85 for i in range(int(n_steps / 2))]
+        + [0.9 for i in range(int(n_steps / 2))]
+    }
+    """
+    # Multistage extraction column problem
+    problem = "multistage_extraction"
+    initial_state = np.array([0.8, 330, 0.8])
+    set_points = {
+        "Ca": [0.85 for i in range(int(n_steps / 2))]
+        + [0.9 for i in range(int(n_steps / 2))]
+    }
 
-    # Resulting inputs
+    # Nonsmooth control problem
+    problem = "nonsmooth_control"
+    initial_state = np.array([0.8, 330, 0.8])
+    set_points = {
+        "Ca": [0.85 for i in range(int(n_steps / 2))]
+        + [0.9 for i in range(int(n_steps / 2))]
+    }
+
+    # Photo production problem
+    problem = "photo_production"
+    initial_state = np.array([0.1, 20.0, 0.01])
+    set_points = dict()
+    """
+
+    # Inputs
     inputs = {
         "T": T,
         "n_steps": n_steps,
         "initial_state": initial_state,
         "problem": problem,
+        "set_points": set_points,
     }
 
     # Iterating through different parameters
     penalty_factor_list = [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
     nesting_levels = {
         1: {"bandwidth": 25, "n_policies": 500},
-        2: {"bandwidth": 10, "n_policies": 25},
+        2: {"bandwidth": 5, "n_policies": 20},
     }
 
     # Enumerating algorithms
@@ -46,27 +73,33 @@ if __name__ == "__main__":
     for level in nesting_levels.keys():
         algorithms["cNMCTS level " + str(level)] = {
             "function": cnmcts,
-            "parameters": {"level": level, "bandwidth": nesting_levels[level]["bandwidth"]}
+            "parameters": {
+                "level": level,
+                "bandwidth": nesting_levels[level]["bandwidth"],
+            },
+            "plots": [list(), list()],
         }
         algorithms["Gaussian cNRPA level " + str(level)] = {
             "function": run_cnrpa,
-            "parameters" : {
+            "parameters": {
                 "level": level,
                 "n_policies": nesting_levels[level]["n_policies"],
                 "policy_type": "gaussian",
-            }
+            },
+            "plots": [list(), list()],
         }
         algorithms["By Region cNRPA level " + str(level)] = {
             "function": run_cnrpa,
-            "parameters" : {
+            "parameters": {
                 "level": level,
                 "n_policies": nesting_levels[level]["n_policies"],
                 "policy_type": "by_region",
-            }
+            },
+            "plots": [list(), list()],
         }
 
     # Number of iterations per algorithm
-    n_iterations = 2
+    n_iterations = 10
 
     # Storing values
     best_scores = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
@@ -90,7 +123,6 @@ if __name__ == "__main__":
 
             # Running n_iterations of the same algorithm
             for iteration in range(n_iterations):
-                print("Iteration n°", iteration + 1)
                 environment.reset()
                 start_time = time.time()
                 sequence, actions, score = algorithms[algorithm]["function"](
@@ -98,32 +130,35 @@ if __name__ == "__main__":
                 )
                 times_list.append(time.time() - start_time)
                 scores_list.append(score)
+                print("Iteration n°", iteration + 1, "done. Score:", score)
             best_scores[penalty_id, algorithm_id] = min(scores_list)
             mean_scores[penalty_id, algorithm_id] = np.mean(scores_list)
             scores_std[penalty_id, algorithm_id] = np.std(scores_list)
             average_execution_times[penalty_id, algorithm_id] = np.mean(times_list)
 
         # Running random walk, by giving it the maximum time needed by any algorithm run
-        total_execution_time = max(average_execution_times[penalty_id, :-1])
+        total_execution_time = 10
         average_execution_times[penalty_id, -1] = total_execution_time
         scores_list = list()
         print("\nRandom Walk")
         for iteration in range(n_iterations):
-            print("Iteration n°", iteration + 1)
             start_time = time.time()
             best_score = np.inf
-            while (time.time() - start) < total_execution_time:
+            while (time.time() - start_time) < total_execution_time:
                 sequence, actions, score = random_walk(environment)
                 if score < best_score:
                     best_score = score
             scores_list.append(best_score)
+            print("Iteration n°", iteration + 1, "done. Score:", score)
         best_scores[penalty_id, -1] = min(scores_list)
         mean_scores[penalty_id, -1] = np.mean(scores_list)
         scores_std[penalty_id, -1] = np.std(scores_list)
 
     indices = penalty_factor_list
     columns = list(algorithms.keys()) + ["Random Walk"]
-    writer = pd.ExcelWriter("Aggregated_scores_by_penalty_factor.xlsx", engine="xlsxwriter")
+    writer = pd.ExcelWriter(
+        "Aggregated_scores_by_penalty_factor.xlsx", engine="xlsxwriter"
+    )
 
     mean_dataframe = pd.DataFrame(
         data=mean_scores, columns=columns, index=penalty_factor_list

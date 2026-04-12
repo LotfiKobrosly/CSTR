@@ -2,25 +2,26 @@ from copy import deepcopy
 import numpy as np
 
 from environment import EnvironmentWrapper
+from models import code
 
 
 def cnmcts(environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20):
     if level == 0:
         while not environment.is_final():
             if (
-                environment.code(environment.current_state)
+                code(environment.current_state)
                 in environment.states_actions.keys()
             ):
                 choices = np.arange(
                     len(
                         environment.states_actions[
-                            environment.code(environment.current_state)
+                            code(environment.current_state)
                         ]
                     )
                 )
                 chosen_index = np.random.choice(choices)
                 action = environment.states_actions[
-                    environment.code(environment.current_state)
+                    code(environment.current_state)
                 ][chosen_index]
             else:
                 action = environment.sample_random_action()
@@ -30,14 +31,14 @@ def cnmcts(environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20)
     else:
         while not environment.is_final():
             if (
-                not environment.code(environment.current_state)
+                not code(environment.current_state)
                 in environment.states_actions.keys()
             ):
                 environment.states_actions[
-                    environment.code(environment.current_state)
+                    code(environment.current_state)
                 ] = [environment.sample_random_action() for _ in range(bandwidth)]
             for action in environment.states_actions[
-                environment.code(environment.current_state)
+                code(environment.current_state)
             ]:
                 temporary_environment = deepcopy(environment)
                 temporary_environment.step(action)
