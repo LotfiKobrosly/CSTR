@@ -6,4 +6,5 @@ anaconda_*
 *.sh
 scratch*
 *.xlsx
+*.txt
 
