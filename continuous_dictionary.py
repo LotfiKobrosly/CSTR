@@ -29,11 +29,16 @@ class ContinuousGaussianDictionary(dict):
 
             values = np.array(values)
             weights = np.array(weights)
+            size = max(values.shape)
+            #print(size)
             if np.sum(weights) > RELEVANCE_THRESHOLD:
                 weights /= np.sum(weights)
+                values = np.reshape(values, (1, size))
                 weights = np.reshape(weights, values.shape)
+                #print(values.shape)
+                # print(np.dot(values, weights.T))
 
-                return np.dot(values.T, weights)
+                return np.dot(values, weights.T)
             else:
                 return RANDOM_STATE.uniform(-1, 1, size=values.shape[1])
 

@@ -8,12 +8,17 @@ import pandas as pd
 import pcgym
 import matplotlib.pyplot as plt
 
+from models import *
+from environment import EnvironmentWrapper
 from cnmcts import cnmcts
 from cnrpa import run_cnrpa
 from random_walk import random_walk
-from models import *
-from environment import EnvironmentWrapper
+from baselines import get_and_train_ppo
 
+def run_comparison(environment: EnvironmentWrapper, algorithms: dict):
+    pass
+    scores, execution_times, sequences = dict(), dict(), dict()
+    return scores, execution_times, sequences
 
 if __name__ == "__main__":
 
@@ -22,12 +27,35 @@ if __name__ == "__main__":
     T = 25
     n_steps = 50
 
-    # CSTR problem
-    problem = "cstr"
-    initial_state = np.array([0.8, 330, 0.8])
-    set_points = {
-        "Ca": [0.85 for i in range(int(n_steps / 2))]
-        + [0.9 for i in range(int(n_steps / 2))]
+    problems = {
+        # CSTR problem
+        "cstr": {
+            "inputs": {
+                "problem": "cstr",
+                "initial_state": np.array([0.8, 330, 0.8]),
+                "set_points": {
+                    "Ca": [0.85 for i in range(int(n_steps / 2))]
+                    + [0.9 for i in range(int(n_steps / 2))]
+            },
+            "penalty_factor": np.array([0]),
+            "n_steps": n_steps,
+            }
+        },
+        # Crystallization
+        "crystallization": {
+            "inputs": {
+                "problem": "crystallization",
+                "initial_state": np.array([1478.01, 22995.82, 1800863.24, 248516167.94, 0.1586, 0.5, 15, 1, 15]),
+                "set_points": {
+                    "CV": [1 for i in range(int(n_steps / 2))]
+                    + [1.1 for i in range(int(n_steps / 2))],
+                    "Ln": [15 for i in range(int(n_steps / 2))]
+                    + [14 for i in range(int(n_steps / 2))],
+                },
+            },
+            "penalty_factor": np.array([0]),
+            "n_steps": n_steps,
+        },
     }
     """
     # Multistage extraction column problem
@@ -48,24 +76,15 @@ if __name__ == "__main__":
 
     # Photo production problem
     problem = "photo_production"
-    initial_state = np.array([0.1, 20.0, 0.01])
+    initial_state = np.array([1, 600, 0.01])
     set_points = dict()
     """
 
-    # Inputs
-    inputs = {
-        "T": T,
-        "n_steps": n_steps,
-        "initial_state": initial_state,
-        "problem": problem,
-        "set_points": set_points,
-    }
 
     # Iterating through different parameters
-    penalty_factor_list = [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
     nesting_levels = {
-        1: {"bandwidth": 25, "n_policies": 500},
-        2: {"bandwidth": 5, "n_policies": 20},
+        1: {"bandwidth": 25, "n_policies": 500, "half_life_divider": 2},
+        2: {"bandwidth": 5, "n_policies": 20, "half_life_divider": 2},
     }
 
     # Enumerating algorithms
@@ -85,6 +104,7 @@ if __name__ == "__main__":
                 "level": level,
                 "n_policies": nesting_levels[level]["n_policies"],
                 "policy_type": "gaussian",
+                "half_life_divider": nesting_levels[level]["half_life_divider"],
             },
             "plots": [list(), list()],
         }
@@ -94,6 +114,7 @@ if __name__ == "__main__":
                 "level": level,
                 "n_policies": nesting_levels[level]["n_policies"],
                 "policy_type": "by_region",
+                "half_life_divider": nesting_levels[level]["half_life_divider"],
             },
             "plots": [list(), list()],
         }
@@ -107,6 +128,14 @@ if __name__ == "__main__":
     scores_std = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
     average_execution_times = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
 
+    # Inputs
+    inputs = {
+        "T": T,
+        "n_steps": n_steps,
+        "initial_state": initial_state,
+        "problem": problem,
+        "set_points": set_points,
+    }
     # Iterating over penalty factors
     for penalty_id, penalty_factor in enumerate(penalty_factor_list):
         print("\n\nPenalty factor:", penalty_factor)

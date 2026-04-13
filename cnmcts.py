@@ -8,38 +8,18 @@ from models import code
 def cnmcts(environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20):
     if level == 0:
         while not environment.is_final():
-            if (
-                code(environment.current_state)
-                in environment.states_actions.keys()
-            ):
-                choices = np.arange(
-                    len(
-                        environment.states_actions[
-                            code(environment.current_state)
-                        ]
-                    )
-                )
-                chosen_index = np.random.choice(choices)
-                action = environment.states_actions[
-                    code(environment.current_state)
-                ][chosen_index]
-            else:
-                action = environment.sample_random_action()
+            action = environment.sample_random_action()
             environment.step(action)
         return environment.sequence, environment.actions, environment.score
 
     else:
         while not environment.is_final():
-            if (
-                not code(environment.current_state)
-                in environment.states_actions.keys()
-            ):
-                environment.states_actions[
-                    code(environment.current_state)
-                ] = [environment.sample_random_action() for _ in range(bandwidth)]
-            for action in environment.states_actions[
-                code(environment.current_state)
-            ]:
+            actions_list = list()
+            while len(actions_list) < bandwidth:
+                action = environment.sample_random_action()
+                if not (action in actions_list):
+                    actions_list.append(action)
+            for action in actions_list:
                 temporary_environment = deepcopy(environment)
                 temporary_environment.step(action)
                 sequence, actions, score = cnmcts(

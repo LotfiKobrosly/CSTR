@@ -2,6 +2,21 @@ import numpy as np
 import pcgym
 
 
+CURRENTLY_AVAILABLE_MODELS = [
+    "cstr",
+    "first_order_system",
+    "multistage_extraction",
+    "nonsmooth_control",
+    "cstr_series_recycle",
+    "distillation_column",
+    "multistage_extraction_reactive",
+    "four_tank",
+    "heat_exchanger",
+    "biofilm_reactor",
+    "polymerisation_reactor",
+    "crystallization",
+]
+
 def get_environment(
     problem: str = None,
     T: int = None,
@@ -27,10 +42,14 @@ def get_environment(
             parameters = create_nonsmooth_control_environment(
                 n_steps, T, initial_state, set_points
             )
-        case "photo_production":
-            parameters = create_photo_production_environment(
+        case "crystallization":
+            parameters = create_potassium_sulfate_crystallization_environment(
                 n_steps, T, initial_state, set_points
             )
+        # case "photo_production":
+        #     parameters = create_photo_production_environment(
+        #         n_steps, T, initial_state, set_points
+        #     )
         case _:
             raise ValueError("Unknown environment")
     return pcgym.make_env(parameters), parameters["o_space"]
@@ -75,8 +94,8 @@ def create_extraction_column_environment(n_steps, T, initial_state, set_points):
         ]
     ).reshape(-1, 2)
     observation_space = {
-        "low": observation_bounds[0, :],
-        "high": observation_bounds[1, :],
+        "low": observation_bounds[:, 0],
+        "high": observation_bounds[:, 1],
     }
 
     return {
@@ -108,19 +127,13 @@ def create_nonsmooth_control_environment(n_steps, T, initial_state, set_points):
         "model": "nonsmooth_control",
     }
 
-
-# TODO
-def create_photo_production_environment(n_steps, T, initial_state, set_points):
-    """
-    See Bradford, Eric, et al. "Stochastic data-driven model predictive control
-    using gaussian processes." Computers & Chemical Engineering 139 (2020): 106844.
-    """
-    action_space = {"low": None, "high": None}
+def create_potassium_sulfate_crystallization_environment(n_steps, T, initial_state, set_points):
+    action_space = {"low": np.array([-1]), "high": np.array([1])}
+    observation_bounds = np.array([[0, 1e20], [0, 1e20], [0, 1e20], [0, 1e20], [0, 0.5], [0, 2], [0, 20], [0.9, 1.1], [14, 16]]).reshape(-1, 2)
     observation_space = {
-        "low": None,
-        "high": None,
+        "low": observation_bounds[:, 0],
+        "high": observation_bounds[:, 1],
     }
-
     return {
         "N": n_steps,
         "tsim": T,
@@ -128,7 +141,8 @@ def create_photo_production_environment(n_steps, T, initial_state, set_points):
         "o_space": observation_space,
         "a_space": action_space,
         "x0": initial_state,
-        "model": "photo_production",
+        "model": "crystallization",
+        "r_scale": {"CV": 0.5 ** 2, "Ln": 1 / 20 ** 2},
     }
 
 def code(control_instance):

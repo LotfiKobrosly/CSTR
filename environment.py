@@ -5,7 +5,7 @@ from models import code
 
 
 class EnvironmentWrapper:
-    def __init__(self, environment, simulation_horizon: float, penalty_factor: float):
+    def __init__(self, environment, simulation_horizon: float, penalty_factor: np.ndarray):
         self.environment = environment
         # Initialize the environment
         observation, info = environment.reset(RANDOM_SEED)
@@ -50,21 +50,22 @@ class EnvironmentWrapper:
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.environment.step(action)
-        observation = self.truncate_observation(observation)
+        #observation = self.truncate_observation(observation)
         observation = code(observation)
         if self.actions:
-            penalty = np.linalg.norm(action - self.actions[-1])
+            penalty = np.absolute(action - self.actions[-1])
         else:
-            penalty = 0
-        if isinstance(action, np.ndarray):
-            action = action.reshape(-1)
+            penalty = np.array([0])
+        if not isinstance(action, np.ndarray):
+            action = np.array([action])
+        action = action.reshape(1, -1)
 
         self.actions.append(action)
         self.current_timestamp += 1
         self.done = terminated
         self.sequence.append(observation)
         self.current_state = observation
-        self.score += np.absolute(reward) + self.penalty_factor * penalty
+        self.score += np.absolute(reward) + (penalty @ self.penalty_factor @ penalty.T).flatten()[0]
         self.cumulative_distance_to_true_value += np.absolute(reward)
 
     def sample_random_action(self):

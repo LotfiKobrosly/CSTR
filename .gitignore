@@ -1,5 +1,6 @@
 cstr*
 *.png
+*.jpeg
 __pycache*
 *.ipynb
 anaconda_*

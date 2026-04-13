@@ -211,8 +211,8 @@ def cnrpa(
             )
             if score < best_score:
                 best_score = score
-                best_sequence = sequence
-                best_actions = actions
+                best_sequence = sequence[:]
+                best_actions = actions[:]
             adapt_policy(
                 new_policy,
                 best_actions,
