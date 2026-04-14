@@ -22,9 +22,16 @@ class EnvironmentWrapper:
         self.score = 0
         self.cumulative_distance_to_true_value = 0
         self.penalty_factor = penalty_factor
+        self.trnucate = False
 
     def is_final(self):
         return self.done or self.current_timestamp >= self.horizon
+
+    def allow_truncation(self):
+        self.trnucate = True
+
+    def disallow_truncation(self):
+        self.trnucate = False
 
     def reset(self):
         observation, info = self.environment.reset()
@@ -50,15 +57,16 @@ class EnvironmentWrapper:
 
     def step(self, action):
         observation, reward, terminated, truncated, info = self.environment.step(action)
-        #observation = self.truncate_observation(observation)
+        if self.trnucate:
+            observation = self.truncate_observation(observation)
         observation = code(observation)
-        if self.actions:
-            penalty = np.absolute(action - self.actions[-1])
-        else:
-            penalty = np.array([0])
         if not isinstance(action, np.ndarray):
             action = np.array([action])
         action = action.reshape(1, -1)
+        if self.actions:
+            penalty = np.absolute(action - self.actions[-1])
+        else:
+            penalty = np.zeros(action.shape)
 
         self.actions.append(action)
         self.current_timestamp += 1

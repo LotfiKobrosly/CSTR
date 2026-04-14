@@ -127,34 +127,38 @@ def adapt_policy(
             kernel_radius = 1 / len(policy)
 
             # Adapting visited states
-            for state_index, state in enumerate(sequence[:-1]):
-                new_move = actions[state_index]
-                if state in policy.keys():
-                    policy[state] += learning_rate * (new_move - policy[state])
+            for timestamp, state in enumerate(sequence[:-1]):
+                new_move = actions[timestamp]
+                if (*state, timestamp) in policy.keys():
+                    new_move = np.reshape(new_move, policy[(*state, timestamp)].shape)
+                    policy[(*state, timestamp)] += learning_rate * (new_move - policy[(*state, timestamp)])
                 else:
-                    policy[state] = new_move
+                    policy[(*state, timestamp)] = new_move
 
             # Adapting nearby states
             for state in policy.keys():
-                if state not in sequence[:-1]:
+                if state[:-1] not in sequence[:-1]:
                     weights = np.zeros(len(actions))
-                    gaussian_filter = GaussianKernel(state, kernel_radius)
+                    gaussian_filter = GaussianKernel(state[:-1], kernel_radius)
+                    temporal_gaussian_filter = GaussianKernel(np.array([state[-1]]), kernel_radius)
                     weights = [
                         gaussian_filter.pdf(point)
                         for point in sequence[:-1]
                     ]
                     if np.sum(weights) >= RELEVANCE_THRESHOLD:
-                        weights = np.array(weights) / np.sum(weights)
+                        weights = 0.5 * (np.array(weights) + np.array([temporal_gaussian_filter.pdf(timestamp) for timestamp in range(len(actions))]))
+                        weights /= np.sum(weights)
                         try:
                             new_move = np.array(list(actions)).T @ weights
                         except:
                             for action in actions:
                                 print(action)
                             raise ValueError("Whatever")
+                        new_move = np.reshape(new_move, policy[state].shape)
                         policy[state] += learning_rate * (new_move - policy[state])
         else:
-            for state_index, state in enumerate(sequence[:-1]):
-                policy[state] = actions[state_index]
+            for timestamp, state in enumerate(sequence[:-1]):
+                policy[(*state, timestamp)] = actions[timestamp]
 
     else:
         raise ValueError("Policy type ill-defined")
@@ -182,6 +186,7 @@ def cnrpa(
                 )
             else:
                 action = environment.sample_random_action()
+            # print(action)
             environment.step(action)
         #print(environment.score)
         return environment.score, environment.sequence, environment.actions

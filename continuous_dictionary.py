@@ -25,20 +25,26 @@ class ContinuousGaussianDictionary(dict):
             for other_key in self.keys():
                 other_position, other_timestamp = code(other_key[:-1]), other_key[-1]
                 values.append(list(dict.__getitem__(self, other_key)))
-                weights.append((kernel.pdf(other_key) + temporal_kernel.pdf(other_timestamp)) / 2)
+                weights.append((kernel.pdf(other_position) + temporal_kernel.pdf(other_timestamp)) / 2)
 
             values = np.array(values)
             weights = np.array(weights)
-            size = max(values.shape)
             #print(size)
             if np.sum(weights) > RELEVANCE_THRESHOLD:
                 weights /= np.sum(weights)
-                values = np.reshape(values, (1, size))
-                weights = np.reshape(weights, values.shape)
-                #print(values.shape)
-                # print(np.dot(values, weights.T))
+                try:
+                    shape = sorted(values.shape)
+                    if len(shape) > 1:
+                        new_shape = shape[-2], shape[-1]
+                    else:
+                        new_shape = (1, shape)
+                    values = np.reshape(values, new_shape)
+                except ValueError:
+                    print(values[0])
+                    raise ValueError("Whatever")
+                weights = np.reshape(weights, (1, -1))
 
-                return np.dot(values, weights.T)
+                return np.dot(values, weights.T).reshape((-1,))
             else:
                 return RANDOM_STATE.uniform(-1, 1, size=values.shape[1])
 

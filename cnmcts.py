@@ -17,7 +17,7 @@ def cnmcts(environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20)
             actions_list = list()
             while len(actions_list) < bandwidth:
                 action = environment.sample_random_action()
-                if not (action in actions_list):
+                if not np.any([np.all(action == element) for element in actions_list]):
                     actions_list.append(action)
             for action in actions_list:
                 temporary_environment = deepcopy(environment)

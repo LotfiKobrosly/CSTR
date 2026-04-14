@@ -33,25 +33,24 @@ def get_environment(
     assert not (set_points is None), "No set points defined"
     match problem:
         case "cstr":
-            parameters = create_cstr_environment(n_steps, T, initial_state, set_points)
+            function = create_cstr_environment
         case "multistage_extraction":
-            parameters = create_extraction_column_environment(
-                n_steps, T, initial_state, set_points
-            )
+            function = create_extraction_column_environment
         case "nonsmooth_control":
-            parameters = create_nonsmooth_control_environment(
-                n_steps, T, initial_state, set_points
-            )
+            function = create_nonsmooth_control_environment
         case "crystallization":
-            parameters = create_potassium_sulfate_crystallization_environment(
-                n_steps, T, initial_state, set_points
-            )
+            function = create_potassium_sulfate_crystallization_environment
+        case "four_tank":
+            function = create_four_tank_environment
+        case "biofilm_reactor":
+            function = create_biofilm_reactor_environment
         # case "photo_production":
         #     parameters = create_photo_production_environment(
         #         n_steps, T, initial_state, set_points
         #     )
         case _:
             raise ValueError("Unknown environment")
+    parameters = function(n_steps, T, initial_state, set_points)
     return pcgym.make_env(parameters), parameters["o_space"]
 
 
@@ -113,8 +112,8 @@ def create_extraction_column_environment(n_steps, T, initial_state, set_points):
 def create_nonsmooth_control_environment(n_steps, T, initial_state, set_points):
     action_space = {"low": np.array([-1]), "high": np.array([1])}
     observation_space = {
-        "low": None,
-        "high": None,
+        "low": np.array([-1, -1, 0.2]),
+        "high": np.array([1, 1, 0.4]),
     }
 
     return {
@@ -143,6 +142,44 @@ def create_potassium_sulfate_crystallization_environment(n_steps, T, initial_sta
         "x0": initial_state,
         "model": "crystallization",
         "r_scale": {"CV": 0.5 ** 2, "Ln": 1 / 20 ** 2},
+    }
+
+def create_four_tank_environment(n_steps, T, initial_state, set_points):
+    action_space = {"low": np.array([0, 0]), "high": np.array([10, 10])}
+    observation_space = {
+        "low": np.array([0] * 6),
+        "high": np.array([0.6] * 6),
+    }
+    return {
+        "N": n_steps,
+        "tsim": T,
+        "SP": set_points,
+        "o_space": observation_space,
+        "a_space": action_space,
+        "x0": initial_state,
+        "model": "four_tank",
+        "r_scale": {"h3": 1 / 0.6 ** 2, "h4": 1 / 0.6 ** 2},
+    }
+
+def create_biofilm_reactor_environment(n_steps, T, initial_state, set_points):
+    action_space = {
+        "low": np.array([0, 1, 0.05, 0.05, 0.05]),
+        "high": np.array([10, 30, 1, 1, 1]),
+    }
+    observation_bounds = np.array([[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0.9,1.1]])
+    observation_space = {
+        "low": observation_bounds[:, 0],
+        "high": observation_bounds[:, 1],
+    }
+    return {
+        "N": n_steps,
+        "tsim": T,
+        "SP": set_points,
+        "o_space": observation_space,
+        "a_space": action_space,
+        "x0": initial_state,
+        "model": "biofilm_reactor",
+        "r_scale": {"S1_A": 1 / 10 ** 2},
     }
 
 def code(control_instance):

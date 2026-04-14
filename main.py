@@ -56,6 +56,48 @@ if __name__ == "__main__":
             "penalty_factor": np.array([0]),
             "n_steps": n_steps,
         },
+        # Four Tank
+        "four_tank": {
+            "inputs" : {
+                "problem": "four_tank",
+                "initial_state": np.array([0.141, 0.112, 0.072, 0.42, 0.5, 0.2]),
+                "set_points": {
+                    "h3": [0.3 for i in range(int(n_steps / 3))]
+                    + [0.1 for i in range(int(n_steps / 3))]
+                    + [0 for i in range(int(n_steps / 3))],
+                    "h4": [0.1 for i in range(int(n_steps / 2))]
+                    + [0 for i in range(int(n_steps / 2))],
+                },
+            },
+            "penalty_factor": np.array([0]),
+            "n_steps": n_steps,
+        },
+        # Biofilm Reactor
+        "biofilm_reactor": {
+            "inputs" : {
+                "problem": "biofilm_reactor",
+                "initial_state": np.array([2,0.1,10,0.1,2,0.1,10,0.1,2,0.1,10,0.1,2,0.1,10,0.1,1]),
+                "set_points": {
+                    "S1_A": [1 for i in range(int(n_steps / 2))]
+                    + [1.1 for i in range(int(n_steps / 2))],
+                },
+            },
+            "penalty_factor": np.zeros((5, 5)),
+            "n_steps": n_steps,
+        },
+        # Example for Nonsmooth control
+        "nonsmooth_control": {
+            "inputs" : {
+                "problem": "nonsmooth_control",
+                "initial_state": np.array([9, 4]),
+                "set_points": {
+                    "X1": [4 for i in range(int(n_steps / 2))]
+                    + [3 for i in range(int(n_steps / 2))],
+                },
+            },
+            "penalty_factor": np.zeros((1, 1)),
+            "n_steps": n_steps,
+        },
     }
     """
     # Multistage extraction column problem
