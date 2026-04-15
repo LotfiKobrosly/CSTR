@@ -49,7 +49,7 @@ def get_environment(
         #         n_steps, T, initial_state, set_points
         #     )
         case _:
-            raise ValueError("Unknown environment")
+            raise ValueError("Unknown environment: " + problem)
     parameters = function(n_steps, T, initial_state, set_points)
     return pcgym.make_env(parameters), parameters["o_space"]
 
@@ -183,6 +183,8 @@ def create_biofilm_reactor_environment(n_steps, T, initial_state, set_points):
     }
 
 def code(control_instance):
+    if isinstance(control_instance, np.ndarray):
+        control_instance = control_instance.flatten()
     control_instance_tuple = ()
     for element in control_instance:
         control_instance_tuple += ((round(element, 3)),)

@@ -69,7 +69,7 @@ if __name__ == "__main__":
                     + [0 for i in range(int(n_steps / 2))],
                 },
             },
-            "penalty_factor": np.array([0]),
+            "penalty_factor": np.zeros((1, 1)),
             "n_steps": n_steps,
         },
         # Biofilm Reactor
@@ -89,39 +89,32 @@ if __name__ == "__main__":
         "nonsmooth_control": {
             "inputs" : {
                 "problem": "nonsmooth_control",
-                "initial_state": np.array([9, 4]),
+                "initial_state": np.array([0, 0, 0.2]),
                 "set_points": {
-                    "X1": [4 for i in range(int(n_steps / 2))]
-                    + [3 for i in range(int(n_steps / 2))],
+                    "X1": [0.3 for i in range(int(n_steps / 2))]
+                    + [0.4 for i in range(int(n_steps / 2))],
                 },
             },
             "penalty_factor": np.zeros((1, 1)),
             "n_steps": n_steps,
         },
+        # Example for Multistage Extraction Column
+        "multistage_extraction": {
+            "inputs": {
+                "problem": "multistage_extraction",
+                "initial_state": np.array([0.55, 0.3, 0.45, 0.25, 0.4, 0.20, 0.35, 0.15, 0.25, 0.1, 0.3]),
+                "set_points": {
+                    "X1": [0.2 for i in range(int(n_steps / 2))]
+                    + [0.4 for i in range(int(n_steps / 2))],
+                    "Y1": [0.2 for i in range(int(n_steps / 2))]
+                    + [0.1 for i in range(int(n_steps / 2))],
+                },
+            },
+            "penalty_factor": np.zeros((2, 2)),
+            "n_steps": n_steps,
+        }
     }
     """
-    # Multistage extraction column problem
-    problem = "multistage_extraction"
-    initial_state = np.array([0.8, 330, 0.8])
-    set_points = {
-        "Ca": [0.85 for i in range(int(n_steps / 2))]
-        + [0.9 for i in range(int(n_steps / 2))]
-    }
-
-    # Nonsmooth control problem
-    problem = "nonsmooth_control"
-    initial_state = np.array([0.8, 330, 0.8])
-    set_points = {
-        "Ca": [0.85 for i in range(int(n_steps / 2))]
-        + [0.9 for i in range(int(n_steps / 2))]
-    }
-
-    # Photo production problem
-    problem = "photo_production"
-    initial_state = np.array([1, 600, 0.01])
-    set_points = dict()
-    """
-
 
     # Iterating through different parameters
     nesting_levels = {

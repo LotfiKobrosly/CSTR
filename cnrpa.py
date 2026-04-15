@@ -116,7 +116,9 @@ def adapt_policy(
         for timestamp, point in enumerate(sequence[:-1]):
             for key in policy.keys():
                 if point_is_in_region((*point, timestamp), key):
-                    policy[region] += learning_rate * (regional_subdivisions_new_moves[key] - policy[region])
+                    #print("For region", key, "value:", policy[key])
+                    policy[key] += learning_rate * (regional_subdivisions_new_moves[key].reshape(policy[key].shape) - policy[key])
+                break
 
     elif isinstance(policy, ContinuousGaussianDictionary):
         if policy:
@@ -151,9 +153,7 @@ def adapt_policy(
                         try:
                             new_move = np.array(list(actions)).T @ weights
                         except:
-                            for action in actions:
-                                print(action)
-                            raise ValueError("Whatever")
+                            raise ValueError("Can't compute new action")
                         new_move = np.reshape(new_move, policy[state].shape)
                         policy[state] += learning_rate * (new_move - policy[state])
         else:
@@ -177,6 +177,8 @@ def cnrpa(
     if level == 0:
         sampling_radius = np.exp(-current_iteration / (n_policies / half_life_divider))
         environment.reset()
+        if isinstance(policy, ContinuousByRegionDictionary):
+            environment.allow_truncation()
         while not environment.is_final():
         
             if len(policy) > 0:
@@ -186,7 +188,7 @@ def cnrpa(
                 )
             else:
                 action = environment.sample_random_action()
-            # print(action)
+            #print(action)
             environment.step(action)
         #print(environment.score)
         return environment.score, environment.sequence, environment.actions
@@ -249,16 +251,18 @@ def run_cnrpa(
 
         start_region = (
             tuple([-2 for _ in range(dimension)] + [0]),
-            tuple([2 for _ in range(dimension)] + [environment.horizon]),
+            tuple([2 for _ in range(dimension)] + [environment.horizon + 1]),
         )
         n_visits = dict()
-        policy[start_region] = RANDOM_STATE.uniform(-1, 1)
+        policy[start_region] = environment.sample_random_action()
         n_visits[start_region] = {"n_visits": 0, "threshold": 1}
         full_area = get_region_area(start_region)
+        environment.allow_truncation()
     else:
         n_visits = None
         full_area = None
     best_score, best_sequence, best_actions = cnrpa(
         environment, level, n_policies, policy, n_visits, 0, full_area, half_life_divider
     )
+    environment.disallow_truncation()
     return best_sequence, best_actions, best_score
