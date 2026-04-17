@@ -1,11 +1,9 @@
 cstr*
 *.png
-*.jpeg
+figure*
 __pycache*
-*.ipynb
+stats_and_files*
 anaconda_*
 *.sh
 scratch*
-*.xlsx
 *.txt
-*.pdf
