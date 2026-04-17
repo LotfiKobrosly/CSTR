@@ -5,19 +5,20 @@ This repo contains implementations of continuous versions of Nested Monte Carlo 
 * [Continuous Strirred Tank Reactor](https://maximilianb2.github.io/pc-gym/env/cstr/)
 * [Multistage Extraction Column](https://maximilianb2.github.io/pc-gym/env/extraction-column/)
 * [Nonsmooth Control](https://maximilianb2.github.io/pc-gym/env/nonsmooth_control/)
-* [Photo Production of Phycocyanin](https://maximilianb2.github.io/pc-gym/env/photoproduction/)
+* [Crystallization](https://maximilianb2.github.io/pc-gym/env/crystallisation/)
 
 Some of these problems can accept the presence of disturbances, which are defined in the cited articles.
 
 # Implemented algorithms
 * Continuous Nested Monte Carlo Tree Search
+	** First variation is simply the continuous version of the regular NMCS
+	** Second variation uses the instant reward of an action when rollinn through the children of a node instead of the score of the rollout that starts at each child.
 * Continuous Nested Rollout Policy Adaptation:
 	** First variation: when deciding the next step when encountering a state that was not visited through the previous rollouts, we use a gaussian kernel on the neighboring states
 	** Second variation is to subdivide the state space and assign a move (with the highest probability) to each region. After a number of visits of a region, it is subdivided even further for a finer evaluation of the overall policy.
 
 # Baselines
 * Proximal Policy Optimization
-* Continuous Monte Carlo Tree Search
 
 # References
 ## Pc-Gym
