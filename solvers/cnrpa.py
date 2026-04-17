@@ -2,11 +2,11 @@ import itertools
 from copy import deepcopy
 import numpy as np
 
-from environment import EnvironmentWrapper
-from continuous_dictionary import *
-from gaussian_kernel import GaussianKernel
-from models import code
-from constants import RANDOM_STATE, RELEVANCE_THRESHOLD, HALF_LIFE_DIVIDER
+from classes.environment import EnvironmentWrapper
+from classes.continuous_dictionary import *
+from classes.gaussian_kernel import GaussianKernel
+from utils.models import code
+from utils.constants import RANDOM_STATE, RELEVANCE_THRESHOLD, HALF_LIFE_DIVIDER
 
 
 def get_region_area(region: tuple):
@@ -43,7 +43,11 @@ def subdivide_region(region: tuple):
     return list(itertools.product(*tuple(new_bounds)))
 
 
-def instantiate_policy(policy_type: str = "by_region", kernel_radius: float = None, temporal_kernel_radius: float = None):
+def instantiate_policy(
+    policy_type: str = "by_region",
+    kernel_radius: float = None,
+    temporal_kernel_radius: float = None,
+):
     if policy_type == "gaussian":
         assert not (
             kernel_radius is None
@@ -101,23 +105,32 @@ def adapt_policy(
         ## Conglomerating actions chosen in each region
         regional_subdivisions_new_moves = {region: list() for region in policy.keys()}
         for region in regional_subdivisions_new_moves.keys():
-            for timestamp in range(int(region[0][-1]), min(int(region[1][-1]), len(actions) - 1)):
+            for timestamp in range(
+                int(region[0][-1]), min(int(region[1][-1]), len(actions) - 1)
+            ):
                 if point_is_in_region((*sequence[timestamp], timestamp), region):
                     try:
-                        regional_subdivisions_new_moves[region].append(actions[timestamp])
+                        regional_subdivisions_new_moves[region].append(
+                            actions[timestamp]
+                        )
                     except IndexError:
                         print("Index:", timestamp)
                         print("Range:", int(region[0][-1]), int(region[1][-1]))
                         print("N° actions:", len(actions))
                         raise IndexError("Index out of range")
-            regional_subdivisions_new_moves[region] = np.mean(regional_subdivisions_new_moves[region], axis=0)
+            regional_subdivisions_new_moves[region] = np.mean(
+                regional_subdivisions_new_moves[region], axis=0
+            )
 
         ## Changing values
         for timestamp, point in enumerate(sequence[:-1]):
             for key in policy.keys():
                 if point_is_in_region((*point, timestamp), key):
-                    #print("For region", key, "value:", policy[key])
-                    policy[key] += learning_rate * (regional_subdivisions_new_moves[key].reshape(policy[key].shape) - policy[key])
+                    # print("For region", key, "value:", policy[key])
+                    policy[key] += learning_rate * (
+                        regional_subdivisions_new_moves[key].reshape(policy[key].shape)
+                        - policy[key]
+                    )
                 break
 
     elif isinstance(policy, ContinuousGaussianDictionary):
@@ -133,7 +146,9 @@ def adapt_policy(
                 new_move = actions[timestamp]
                 if (*state, timestamp) in policy.keys():
                     new_move = np.reshape(new_move, policy[(*state, timestamp)].shape)
-                    policy[(*state, timestamp)] += learning_rate * (new_move - policy[(*state, timestamp)])
+                    policy[(*state, timestamp)] += learning_rate * (
+                        new_move - policy[(*state, timestamp)]
+                    )
                 else:
                     policy[(*state, timestamp)] = new_move
 
@@ -142,13 +157,20 @@ def adapt_policy(
                 if state[:-1] not in sequence[:-1]:
                     weights = np.zeros(len(actions))
                     gaussian_filter = GaussianKernel(state[:-1], kernel_radius)
-                    temporal_gaussian_filter = GaussianKernel(np.array([state[-1]]), kernel_radius)
-                    weights = [
-                        gaussian_filter.pdf(point)
-                        for point in sequence[:-1]
-                    ]
+                    temporal_gaussian_filter = GaussianKernel(
+                        np.array([state[-1]]), kernel_radius
+                    )
+                    weights = [gaussian_filter.pdf(point) for point in sequence[:-1]]
                     if np.sum(weights) >= RELEVANCE_THRESHOLD:
-                        weights = 0.5 * (np.array(weights) + np.array([temporal_gaussian_filter.pdf(timestamp) for timestamp in range(len(actions))]))
+                        weights = 0.5 * (
+                            np.array(weights)
+                            + np.array(
+                                [
+                                    temporal_gaussian_filter.pdf(timestamp)
+                                    for timestamp in range(len(actions))
+                                ]
+                            )
+                        )
                         weights /= np.sum(weights)
                         try:
                             new_move = np.array(list(actions)).T @ weights
@@ -180,17 +202,22 @@ def cnrpa(
         if isinstance(policy, ContinuousByRegionDictionary):
             environment.allow_truncation()
         while not environment.is_final():
-        
+
             if len(policy) > 0:
                 action = RANDOM_STATE.normal(
-                    loc=policy[(*code(environment.current_state), environment.current_timestamp)],
+                    loc=policy[
+                        (
+                            *code(environment.current_state),
+                            environment.current_timestamp,
+                        )
+                    ],
                     scale=sampling_radius,
                 )
             else:
                 action = environment.sample_random_action()
-            #print(action)
+            # print(action)
             environment.step(action)
-        #print(environment.score)
+        # print(environment.score)
         return environment.score, environment.sequence, environment.actions
 
     else:
@@ -246,7 +273,11 @@ def run_cnrpa(
     dimension = len(environment.current_state)
     kernel_radius = 0.3
     temporal_kernel_radius = 0.05 * environment.horizon
-    policy = instantiate_policy(policy_type, kernel_radius=kernel_radius, temporal_kernel_radius=temporal_kernel_radius)
+    policy = instantiate_policy(
+        policy_type,
+        kernel_radius=kernel_radius,
+        temporal_kernel_radius=temporal_kernel_radius,
+    )
     if policy_type == "by_region":
 
         start_region = (
@@ -262,7 +293,14 @@ def run_cnrpa(
         n_visits = None
         full_area = None
     best_score, best_sequence, best_actions = cnrpa(
-        environment, level, n_policies, policy, n_visits, 0, full_area, half_life_divider
+        environment,
+        level,
+        n_policies,
+        policy,
+        n_visits,
+        0,
+        full_area,
+        half_life_divider,
     )
     environment.disallow_truncation()
     return best_sequence, best_actions, best_score

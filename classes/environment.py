@@ -1,11 +1,13 @@
 import numpy as np
 
-from constants import RANDOM_SEED
-from models import code
+from utils.constants import RANDOM_SEED
+from utils.models import code
 
 
 class EnvironmentWrapper:
-    def __init__(self, environment, simulation_horizon: float, penalty_factor: np.ndarray):
+    def __init__(
+        self, environment, simulation_horizon: float, penalty_factor: np.ndarray
+    ):
         self.environment = environment
         # Initialize the environment
         observation, info = environment.reset(RANDOM_SEED)
@@ -76,7 +78,10 @@ class EnvironmentWrapper:
         self.sequence.append(observation)
         self.current_state = observation
         self.instant_reward = np.absolute(reward)
-        self.score += self.instant_reward + (penalty @ self.penalty_factor @ penalty.T).flatten()[0]
+        self.score += (
+            self.instant_reward
+            + (penalty @ self.penalty_factor @ penalty.T).flatten()[0]
+        )
         self.cumulative_distance_to_true_value += np.absolute(reward)
 
     def sample_random_action(self):

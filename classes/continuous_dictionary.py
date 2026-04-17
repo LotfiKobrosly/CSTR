@@ -1,8 +1,8 @@
 import numpy as np
 
-from gaussian_kernel import GaussianKernel
-from models import code
-from constants import RELEVANCE_THRESHOLD, RANDOM_STATE
+from classes.gaussian_kernel import GaussianKernel
+from utils.models import code
+from utils.constants import RELEVANCE_THRESHOLD, RANDOM_STATE
 
 
 class ContinuousGaussianDictionary(dict):
@@ -20,16 +20,21 @@ class ContinuousGaussianDictionary(dict):
             return dict.__getitem__(self, (*position, timestamp))
         else:
             kernel = GaussianKernel(position, self.kernel_radius)
-            temporal_kernel = GaussianKernel(np.array([timestamp]), self.temporal_kernel_radius)
+            temporal_kernel = GaussianKernel(
+                np.array([timestamp]), self.temporal_kernel_radius
+            )
             values, weights = list(), list()
             for other_key in self.keys():
                 other_position, other_timestamp = code(other_key[:-1]), other_key[-1]
                 values.append(list(dict.__getitem__(self, other_key)))
-                weights.append((kernel.pdf(other_position) + temporal_kernel.pdf(other_timestamp)) / 2)
+                weights.append(
+                    (kernel.pdf(other_position) + temporal_kernel.pdf(other_timestamp))
+                    / 2
+                )
 
             values = np.array(values)
             weights = np.array(weights)
-            #print(size)
+            # print(size)
             if np.sum(weights) > RELEVANCE_THRESHOLD:
                 weights /= np.sum(weights)
                 try:
@@ -56,7 +61,10 @@ class ContinuousGaussianDictionary(dict):
             self[k] = v
 
     def predict(self, key, *args, **kwargs):
-        return self[key], None # None is added to cope with the predict function of the pc-gym package
+        return (
+            self[key],
+            None,
+        )  # None is added to cope with the predict function of the pc-gym package
 
 
 class ContinuousByRegionDictionary(dict):
@@ -65,7 +73,7 @@ class ContinuousByRegionDictionary(dict):
 
     def __getitem__(self, key):
         region = None
-        #key = code(key)
+        # key = code(key)
         if key in self.keys():
             return dict.__getitem__(self, key)
         for existing_key in self.keys():
@@ -90,4 +98,7 @@ class ContinuousByRegionDictionary(dict):
             self[k] = v
 
     def predict(self, key, *args, **kwargs):
-        return self[key], None # None is added to cope with the predict function of the pc-gym package
+        return (
+            self[key],
+            None,
+        )  # None is added to cope with the predict function of the pc-gym package

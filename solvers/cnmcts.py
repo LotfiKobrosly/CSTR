@@ -1,8 +1,8 @@
 from copy import deepcopy
 import numpy as np
 
-from environment import EnvironmentWrapper
-from models import code
+from classes.environment import EnvironmentWrapper
+from utils.models import code
 
 
 def cnmcts(environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20):

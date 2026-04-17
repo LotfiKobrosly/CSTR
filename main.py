@@ -8,12 +8,12 @@ import pandas as pd
 import pcgym
 import matplotlib.pyplot as plt
 
-from models import *
-from environment import EnvironmentWrapper
-from cnmcts import cnmcts
-from cnrpa import run_cnrpa
-from random_walk import random_walk
-from baselines import get_and_train_ppo
+from classes.environment import EnvironmentWrapper
+from solvers.cnmcts import cnmcts
+from solvers.cnrpa import run_cnrpa
+from solvers.random_walk import random_walk
+from solvers.baselines import get_and_train_ppo
+from utils.models import *
 
 def run_comparison(environment: EnvironmentWrapper, algorithms: dict):
     pass

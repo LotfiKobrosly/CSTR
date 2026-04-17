@@ -17,6 +17,7 @@ CURRENTLY_AVAILABLE_MODELS = [
     "crystallization",
 ]
 
+
 def get_environment(
     problem: str = None,
     T: int = None,
@@ -126,9 +127,24 @@ def create_nonsmooth_control_environment(n_steps, T, initial_state, set_points):
         "model": "nonsmooth_control",
     }
 
-def create_potassium_sulfate_crystallization_environment(n_steps, T, initial_state, set_points):
+
+def create_potassium_sulfate_crystallization_environment(
+    n_steps, T, initial_state, set_points
+):
     action_space = {"low": np.array([-1]), "high": np.array([1])}
-    observation_bounds = np.array([[0, 1e20], [0, 1e20], [0, 1e20], [0, 1e20], [0, 0.5], [0, 2], [0, 20], [0.9, 1.1], [14, 16]]).reshape(-1, 2)
+    observation_bounds = np.array(
+        [
+            [0, 1e20],
+            [0, 1e20],
+            [0, 1e20],
+            [0, 1e20],
+            [0, 0.5],
+            [0, 2],
+            [0, 20],
+            [0.9, 1.1],
+            [14, 16],
+        ]
+    ).reshape(-1, 2)
     observation_space = {
         "low": observation_bounds[:, 0],
         "high": observation_bounds[:, 1],
@@ -141,8 +157,9 @@ def create_potassium_sulfate_crystallization_environment(n_steps, T, initial_sta
         "a_space": action_space,
         "x0": initial_state,
         "model": "crystallization",
-        "r_scale": {"CV": 0.5 ** 2, "Ln": 1 / 20 ** 2},
+        "r_scale": {"CV": 0.5**2, "Ln": 1 / 20**2},
     }
+
 
 def create_four_tank_environment(n_steps, T, initial_state, set_points):
     action_space = {"low": np.array([0, 0]), "high": np.array([10, 10])}
@@ -158,15 +175,36 @@ def create_four_tank_environment(n_steps, T, initial_state, set_points):
         "a_space": action_space,
         "x0": initial_state,
         "model": "four_tank",
-        "r_scale": {"h3": 1 / 0.6 ** 2, "h4": 1 / 0.6 ** 2},
+        "r_scale": {"h3": 1 / 0.6**2, "h4": 1 / 0.6**2},
     }
+
 
 def create_biofilm_reactor_environment(n_steps, T, initial_state, set_points):
     action_space = {
         "low": np.array([0, 1, 0.05, 0.05, 0.05]),
         "high": np.array([10, 30, 1, 1, 1]),
     }
-    observation_bounds = np.array([[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0,10],[0,10],[0,10],[0,500],[0.9,1.1]])
+    observation_bounds = np.array(
+        [
+            [0, 10],
+            [0, 10],
+            [0, 10],
+            [0, 500],
+            [0, 10],
+            [0, 10],
+            [0, 10],
+            [0, 500],
+            [0, 10],
+            [0, 10],
+            [0, 10],
+            [0, 500],
+            [0, 10],
+            [0, 10],
+            [0, 10],
+            [0, 500],
+            [0.9, 1.1],
+        ]
+    )
     observation_space = {
         "low": observation_bounds[:, 0],
         "high": observation_bounds[:, 1],
@@ -179,8 +217,9 @@ def create_biofilm_reactor_environment(n_steps, T, initial_state, set_points):
         "a_space": action_space,
         "x0": initial_state,
         "model": "biofilm_reactor",
-        "r_scale": {"S1_A": 1 / 10 ** 2},
+        "r_scale": {"S1_A": 1 / 10**2},
     }
+
 
 def code(control_instance):
     if isinstance(control_instance, np.ndarray):

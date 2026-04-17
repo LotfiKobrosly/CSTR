@@ -1,4 +1,5 @@
-from environment import EnvironmentWrapper
+from classes.environment import EnvironmentWrapper
+
 
 def random_walk(environment: EnvironmentWrapper):
     done = False
