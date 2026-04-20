@@ -10,7 +10,10 @@ from utils.models import code
 
 
 def crbnmcts(
-    environment: EnvironmentWrapper, level: int = 1, bandwidth: int = 20, action: np.ndarray = None
+    environment: EnvironmentWrapper,
+    level: int = 1,
+    bandwidth: int = 20,
+    action: np.ndarray = None,
 ):
     if level == 0:
         environment.step(action)
@@ -33,15 +36,24 @@ def crbnmcts(
                     [np.all(new_action == element) for element in actions_list]
                 ):
                     actions_list.append(new_action)
-            temporary_environments_list = [deepcopy(environment) for _ in range(bandwidth)]
-            for new_action, temporary_environment in zip(actions_list, temporary_environments_list):
+            temporary_environments_list = [
+                deepcopy(environment) for _ in range(bandwidth)
+            ]
+            for new_action, temporary_environment in zip(
+                actions_list, temporary_environments_list
+            ):
                 sequence, actions, score = crbnmcts(
-                    temporary_environment, level=level - 1, bandwidth=bandwidth, action=new_action
+                    temporary_environment,
+                    level=level - 1,
+                    bandwidth=bandwidth,
+                    action=new_action,
                 )
                 if score < best_score:
                     best_action = new_action
                     best_score = score
-                if temporary_environment.is_final() and (score < environment.best_score):
+                if temporary_environment.is_final() and (
+                    score < environment.best_score
+                ):
                     environment.best_score = score
                     environment.best_sequence = sequence[:]
                     environment.best_actions = actions[:]

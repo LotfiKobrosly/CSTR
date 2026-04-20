@@ -37,6 +37,9 @@ class EnvironmentWrapper:
 
     def reset(self):
         observation, info = self.environment.reset()
+        if self.truncate:
+            observation = self.truncate_observation(observation)
+            self.environment.obs = observation[:]
         self.current_state = code(observation)
         self.sequence = [self.current_state]
         self.best_sequence = [self.current_state]
@@ -47,8 +50,6 @@ class EnvironmentWrapper:
         self.best_score = np.inf
         self.done = False
         self.score = 0
-        self.cumulative_distance_to_true_value = 0
-        self.instant_reward = 0
 
     def truncate_observation(self, observation):
         for component_index, component in enumerate(observation):
@@ -77,12 +78,10 @@ class EnvironmentWrapper:
         self.done = terminated
         self.sequence.append(observation)
         self.current_state = observation
-        self.instant_reward = np.absolute(reward)
         self.score += (
-            self.instant_reward
+            np.absolute(reward)
             + (penalty @ self.penalty_factor @ penalty.T).flatten()[0]
         )
-        self.cumulative_distance_to_true_value += np.absolute(reward)
 
     def sample_random_action(self):
         return self.environment.action_space.sample()

@@ -1,4 +1,5 @@
 cstr*
+*.xlsx
 *.png
 figure*
 __pycache*

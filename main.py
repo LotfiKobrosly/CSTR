@@ -2,7 +2,9 @@
 Setup a CSTR environment with a setpoint change (see https://maximilianb2.github.io/pc-gym/#welcome)
 """
 
+import os
 import time
+import warnings
 import numpy as np
 import pandas as pd
 import pcgym
@@ -10,116 +12,98 @@ import matplotlib.pyplot as plt
 
 from classes.environment import EnvironmentWrapper
 from solvers.cnmcts import cnmcts
+from solvers.crbnmcts import crbnmcts
 from solvers.cnrpa import run_cnrpa
-from solvers.random_walk import random_walk
-from solvers.baselines import get_and_train_ppo
+from solvers.baselines import get_and_train_baseline, run_baseline
 from utils.models import *
 
-def run_comparison(environment: EnvironmentWrapper, algorithms: dict):
-    pass
-    scores, execution_times, sequences = dict(), dict(), dict()
-    return scores, execution_times, sequences
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 if __name__ == "__main__":
 
-    # Running algorithms on the CSTR problem
-    # Global inputs
-    T = 25
-    n_steps = 50
+    # Functioning problems list
 
     problems = {
-        # CSTR problem
+        # # CSTR problem
         "cstr": {
             "inputs": {
                 "problem": "cstr",
                 "initial_state": np.array([0.8, 330, 0.8]),
-                "set_points": {
-                    "Ca": [0.85 for i in range(int(n_steps / 2))]
-                    + [0.9 for i in range(int(n_steps / 2))]
+                "n_steps": 100,
+                "T": 25,
+                "penalty_factor": np.zeros((1, 1)),
             },
-            "penalty_factor": np.array([0]),
-            "n_steps": n_steps,
-            }
-        },
-        # Crystallization
-        "crystallization": {
-            "inputs": {
-                "problem": "crystallization",
-                "initial_state": np.array([1478.01, 22995.82, 1800863.24, 248516167.94, 0.1586, 0.5, 15, 1, 15]),
-                "set_points": {
-                    "CV": [1 for i in range(int(n_steps / 2))]
-                    + [1.1 for i in range(int(n_steps / 2))],
-                    "Ln": [15 for i in range(int(n_steps / 2))]
-                    + [14 for i in range(int(n_steps / 2))],
-                },
-            },
-            "penalty_factor": np.array([0]),
-            "n_steps": n_steps,
-        },
-        # Four Tank
-        "four_tank": {
-            "inputs" : {
-                "problem": "four_tank",
-                "initial_state": np.array([0.141, 0.112, 0.072, 0.42, 0.5, 0.2]),
-                "set_points": {
-                    "h3": [0.3 for i in range(int(n_steps / 3))]
-                    + [0.1 for i in range(int(n_steps / 3))]
-                    + [0 for i in range(int(n_steps / 3))],
-                    "h4": [0.1 for i in range(int(n_steps / 2))]
-                    + [0 for i in range(int(n_steps / 2))],
-                },
-            },
-            "penalty_factor": np.zeros((1, 1)),
-            "n_steps": n_steps,
-        },
-        # Biofilm Reactor
-        "biofilm_reactor": {
-            "inputs" : {
-                "problem": "biofilm_reactor",
-                "initial_state": np.array([2,0.1,10,0.1,2,0.1,10,0.1,2,0.1,10,0.1,2,0.1,10,0.1,1]),
-                "set_points": {
-                    "S1_A": [1 for i in range(int(n_steps / 2))]
-                    + [1.1 for i in range(int(n_steps / 2))],
-                },
-            },
-            "penalty_factor": np.zeros((5, 5)),
-            "n_steps": n_steps,
+            "plotting_indices": [0],
+            "setpoints_names": ["C_A"],
         },
         # Example for Nonsmooth control
         "nonsmooth_control": {
-            "inputs" : {
+            "inputs": {
                 "problem": "nonsmooth_control",
                 "initial_state": np.array([0, 0, 0.2]),
-                "set_points": {
-                    "X1": [0.3 for i in range(int(n_steps / 2))]
-                    + [0.4 for i in range(int(n_steps / 2))],
-                },
+                "penalty_factor": np.zeros((1, 1)),
+                "n_steps": 100,
+                "T": 25,
             },
-            "penalty_factor": np.zeros((1, 1)),
-            "n_steps": n_steps,
+            "plotting_indices": [0],
+            "setpoints_names": ["X_1"],
         },
         # Example for Multistage Extraction Column
-        "multistage_extraction": {
-            "inputs": {
-                "problem": "multistage_extraction",
-                "initial_state": np.array([0.55, 0.3, 0.45, 0.25, 0.4, 0.20, 0.35, 0.15, 0.25, 0.1, 0.3]),
-                "set_points": {
-                    "X1": [0.2 for i in range(int(n_steps / 2))]
-                    + [0.4 for i in range(int(n_steps / 2))],
-                    "Y1": [0.2 for i in range(int(n_steps / 2))]
-                    + [0.1 for i in range(int(n_steps / 2))],
-                },
-            },
-            "penalty_factor": np.zeros((2, 2)),
-            "n_steps": n_steps,
-        }
+        # "multistage_extraction": {
+        #     "inputs": {
+        #         "problem": "multistage_extraction",
+        #         "initial_state": np.array(
+        #             [0.55, 0.3, 0.45, 0.25, 0.4, 0.20, 0.35, 0.15, 0.25, 0.1, 0.3]
+        #         ),
+        #         "penalty_factor": np.zeros((2, 2)),
+        #         "n_steps": 500,
+        #         "T": 10,
+        #     },
+        #     "plotting_indices": [0],
+        #     "setpoints_names": ["X_1"],
+        # }
     }
-    """
+
+    # Defining setpoints
+
+    ## CSTR
+    problems["cstr"]["inputs"]["set_points"] = {
+        "Ca": [0.85 for i in range(int(problems["cstr"]["inputs"]["n_steps"] / 2))]
+        + [0.9 for i in range(int(problems["cstr"]["inputs"]["n_steps"] / 2))],
+    }
+    problems["cstr"]["set_plots"] = [
+        problems["cstr"]["inputs"]["set_points"]["Ca"],
+    ]
+
+    ## Nonsmooth Control
+    problems["nonsmooth_control"]["inputs"]["set_points"] = {
+        "X1": [
+            0.3
+            for i in range(int(problems["nonsmooth_control"]["inputs"]["n_steps"] / 2))
+        ]
+        + [
+            0.4
+            for i in range(int(problems["nonsmooth_control"]["inputs"]["n_steps"] / 2))
+        ],
+    }
+    problems["nonsmooth_control"]["set_plots"] = [
+        problems["nonsmooth_control"]["inputs"]["set_points"]["X1"],
+    ]
+
+    # ## Multistage Extraction
+    # problems["multistage_extraction"]["inputs"]["set_points"] = {
+    #     "X1": [0.2 for i in range(int(problems["multistage_extraction"]["inputs"]["n_steps"] / 2))]
+    #     + [0.4 for i in range(int(problems["multistage_extraction"]["inputs"]["n_steps"] / 2))],
+    # }
+    # problems["multistage_extraction"]["set_plots"] = [
+    #     problems["multistage_extraction"]["inputs"]["set_points"]["X1"],
+    # ]
 
     # Iterating through different parameters
     nesting_levels = {
-        1: {"bandwidth": 25, "n_policies": 500, "half_life_divider": 2},
-        2: {"bandwidth": 5, "n_policies": 20, "half_life_divider": 2},
+        1: {"bandwidth": 25, "n_policies": 500, "half_life_divider": 1},
+        2: {"bandwidth": 20, "n_policies": 100, "half_life_divider": 5},
     }
 
     # Enumerating algorithms
@@ -131,7 +115,13 @@ if __name__ == "__main__":
                 "level": level,
                 "bandwidth": nesting_levels[level]["bandwidth"],
             },
-            "plots": [list(), list()],
+        }
+        algorithms["cRbNMCTS level " + str(level)] = {
+            "function": crbnmcts,
+            "parameters": {
+                "level": level,
+                "bandwidth": nesting_levels[level]["bandwidth"],
+            },
         }
         algorithms["Gaussian cNRPA level " + str(level)] = {
             "function": run_cnrpa,
@@ -141,7 +131,6 @@ if __name__ == "__main__":
                 "policy_type": "gaussian",
                 "half_life_divider": nesting_levels[level]["half_life_divider"],
             },
-            "plots": [list(), list()],
         }
         algorithms["By Region cNRPA level " + str(level)] = {
             "function": run_cnrpa,
@@ -151,39 +140,40 @@ if __name__ == "__main__":
                 "policy_type": "by_region",
                 "half_life_divider": nesting_levels[level]["half_life_divider"],
             },
-            "plots": [list(), list()],
         }
+    baselines = ["PPO", "A2C", "DDPG", "SAC"]
+    baselines_parameters = {
+        "n_steps_learning": 100000,
+        "learning_rate": 0.01,
+    }
 
     # Number of iterations per algorithm
     n_iterations = 10
 
     # Storing values
-    best_scores = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
-    mean_scores = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
-    scores_std = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
-    average_execution_times = np.zeros((len(penalty_factor_list), len(algorithms) + 1))
+    best_scores = np.zeros((len(problems), len(algorithms) + 1))
+    mean_scores = np.zeros((len(problems), len(algorithms) + 1))
+    scores_std = np.zeros((len(problems), len(algorithms) + 1))
+    average_execution_times = np.zeros((len(problems), len(algorithms) + 1))
+    figures_directory = "./figures"
 
-    # Inputs
-    inputs = {
-        "T": T,
-        "n_steps": n_steps,
-        "initial_state": initial_state,
-        "problem": problem,
-        "set_points": set_points,
-    }
-    # Iterating over penalty factors
-    for penalty_id, penalty_factor in enumerate(penalty_factor_list):
-        print("\n\nPenalty factor:", penalty_factor)
-        # Environment
-        environment, observation_space = get_environment(**inputs)
-        environment = EnvironmentWrapper(environment, n_steps, penalty_factor)
+    for problem_id, problem in enumerate(problems.keys()):
+        print("\n\nCurrent problem:", problem)
+        environment, observation_space = get_environment(**problems[problem]["inputs"])
+        environment = EnvironmentWrapper(
+            environment,
+            problems[problem]["inputs"]["n_steps"],
+            problems[problem]["inputs"]["penalty_factor"],
+        )
+        sequences_to_plot = dict()
 
-        # Iterating over algorithms
+        # Iterating over implemented algorithms
         for algorithm_id, algorithm in enumerate(algorithms.keys()):
             print("\nRunning ", algorithm)
             # Local storage
             scores_list = list()
             times_list = list()
+            sequences_list = list()
 
             # Running n_iterations of the same algorithm
             for iteration in range(n_iterations):
@@ -194,47 +184,116 @@ if __name__ == "__main__":
                 )
                 times_list.append(time.time() - start_time)
                 scores_list.append(score)
-                print("Iteration n°", iteration + 1, "done. Score:", score)
-            best_scores[penalty_id, algorithm_id] = min(scores_list)
-            mean_scores[penalty_id, algorithm_id] = np.mean(scores_list)
-            scores_std[penalty_id, algorithm_id] = np.std(scores_list)
-            average_execution_times[penalty_id, algorithm_id] = np.mean(times_list)
+                sequences_list.append(sequence)
+                print(
+                    "Iteration n°",
+                    iteration + 1,
+                    "done. Score:",
+                    "{:.4f}".format(score),
+                )
+            best_index = np.argmin(scores_list)
+            best_scores[problem_id, algorithm_id] = scores_list[best_index]
+            sequences_to_plot[algorithm] = sequences_list[best_index]
+            mean_scores[problem_id, algorithm_id] = np.mean(scores_list)
+            scores_std[problem_id, algorithm_id] = np.std(scores_list)
+            average_execution_times[problem_id, algorithm_id] = np.mean(times_list)
 
-        # Running random walk, by giving it the maximum time needed by any algorithm run
-        total_execution_time = 10
-        average_execution_times[penalty_id, -1] = total_execution_time
-        scores_list = list()
-        print("\nRandom Walk")
-        for iteration in range(n_iterations):
+        # Finding the best performing baseline
+        best_score = np.inf
+        best_sequence = None
+        best_baseline = None
+        corresponding_time = None
+        for baseline in baselines:
+            # Training
+            print("\n" + baseline)
             start_time = time.time()
-            best_score = np.inf
-            while (time.time() - start_time) < total_execution_time:
-                sequence, actions, score = random_walk(environment)
-                if score < best_score:
-                    best_score = score
-            scores_list.append(best_score)
-            print("Iteration n°", iteration + 1, "done. Score:", score)
-        best_scores[penalty_id, -1] = min(scores_list)
-        mean_scores[penalty_id, -1] = np.mean(scores_list)
-        scores_std[penalty_id, -1] = np.std(scores_list)
+            environment.reset()
+            model = get_and_train_baseline(
+                environment, baseline, **baselines_parameters
+            )
+            # Evaluating
+            environment.reset()
+            sequence, actions, score = run_baseline(environment, model)
+            execution_time = time.time() - start_time
+            if score < best_score:
+                best_score = score
+                best_sequence = sequence
+                best_baseline = baseline
+                corresponding_time = execution_time
 
-    indices = penalty_factor_list
-    columns = list(algorithms.keys()) + ["Random Walk"]
-    writer = pd.ExcelWriter(
-        "Aggregated_scores_by_penalty_factor.xlsx", engine="xlsxwriter"
-    )
+        sequences_to_plot[best_baseline] = best_sequence
 
-    mean_dataframe = pd.DataFrame(
-        data=mean_scores, columns=columns, index=penalty_factor_list
-    )
-    std_dataframe = pd.DataFrame(
-        data=scores_std, columns=columns, index=penalty_factor_list
-    )
-    min_dataframe = pd.DataFrame(
-        data=best_scores, columns=columns, index=penalty_factor_list
-    )
+        # Adapting values in the sequences by denormalizing them
+        for algorithm, sequence in sequences_to_plot.items():
+            sequences_to_plot[algorithm] = [
+                element * (observation_space["high"] - observation_space["low"]) / 2
+                + (observation_space["high"] + observation_space["low"]) / 2
+                for element in sequence
+            ]
+
+        # Plotting and saving figure
+        figure_name = figures_directory + "/" + problem + "_comparison.jpeg"
+        figure_title = ""
+        for algorithm_id, algorithm in enumerate(algorithms.keys()):
+            figure_title += (
+                algorithm
+                + ": "
+                + "{:.4f}".format(best_scores[problem_id, algorithm_id])
+                + ". "
+            )
+        figure_title += best_baseline + ": " + "{:.4f}".format(best_score)
+        n_graphs = len(problems[problem]["setpoints_names"])
+        figure, axes = plt.subplots(n_graphs, layout="constrained", figsize=(15, 10))
+        if n_graphs > 1:
+            for i in range(n_graphs):
+                # Setpoints
+                axes[i].plot(
+                    problems[problem]["set_plots"][i],
+                    color="k",
+                    linestyle="--",
+                    label="Setpoints",
+                )
+                for algorithm, sequence in sequences_to_plot.items():
+                    axes[i].plot(
+                        [
+                            element[problems[problem]["plotting_indices"][i]]
+                            for element in sequence
+                        ],
+                        label=algorithm,
+                    )
+                axes[i].legend()
+                axes[i].set_title("$" + problems[problem]["setpoints_names"][i] + "$")
+
+        else:
+            axes.plot(
+                problems[problem]["set_plots"][0],
+                color="k",
+                linestyle="--",
+                label="Setpoints",
+            )
+            for algorithm, sequence in sequences_to_plot.items():
+                axes.plot(
+                    [
+                        element[problems[problem]["plotting_indices"][0]]
+                        for element in sequence
+                    ],
+                    label=algorithm,
+                )
+            axes.legend()
+            axes.set_title("$" + problems[problem]["setpoints_names"][0] + "$")
+        figure.suptitle(figure_title)
+        figure.savefig(figure_name)
+        plt.close()
+
+    indices = list(problems.keys())
+    columns = list(algorithms.keys()) + ["Baseline"]
+    writer = pd.ExcelWriter("Aggregated_scores_by_problem.xlsx", engine="xlsxwriter")
+
+    mean_dataframe = pd.DataFrame(data=mean_scores, columns=columns, index=indices)
+    std_dataframe = pd.DataFrame(data=scores_std, columns=columns, index=indices)
+    min_dataframe = pd.DataFrame(data=best_scores, columns=columns, index=indices)
     time_dataframe = pd.DataFrame(
-        data=average_execution_times, columns=columns, index=penalty_factor_list
+        data=average_execution_times, columns=columns, index=indices
     )
 
     mean_dataframe.to_excel(writer, sheet_name="Mean score")

@@ -198,9 +198,9 @@ def cnrpa(
 ):
     if level == 0:
         sampling_radius = np.exp(-current_iteration / (n_policies / half_life_divider))
-        environment.reset()
         if isinstance(policy, ContinuousByRegionDictionary):
             environment.allow_truncation()
+        environment.reset()
         while not environment.is_final():
 
             if len(policy) > 0:

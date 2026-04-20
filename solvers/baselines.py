@@ -1,5 +1,5 @@
 import numpy as np
-from stable_baselines3 import PPO, A2C, DDPG, DQN, SAC
+from stable_baselines3 import PPO, A2C, DDPG, SAC
 from classes.environment import EnvironmentWrapper
 
 
@@ -37,17 +37,6 @@ def get_and_train_a2c(
     )
 
 
-def get_and_train_dqn(
-    environment: EnvironmentWrapper,
-    n_steps_learning: int = int(3e4),
-    *args,
-    **kwargs,
-):
-    return DQN("MlpPolicy", environment.environment, verbose=1).learn(
-        total_timesteps=n_steps_learning, log_interval=n_steps_learning // 100
-    )
-
-
 def get_and_train_sac(
     environment: EnvironmentWrapper,
     n_steps_learning: int = int(3e4),
@@ -70,7 +59,6 @@ def get_and_train_baseline(
         "A2C": get_and_train_a2c,
         "PPO": get_and_train_ppo,
         "DDPG": get_and_train_ddpg,
-        "DQN": get_and_train_dqn,
         "SAC": get_and_train_sac,
     }
     assert model_type in list(models_dict.keys()), (
