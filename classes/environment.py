@@ -59,14 +59,14 @@ class EnvironmentWrapper:
         return observation
 
     def step(self, action):
+        if not isinstance(action, np.ndarray):
+            action = np.array([action])
+        action = action.reshape(1, -1)
         observation, reward, terminated, truncated, info = self.environment.step(action)
         if self.truncate:
             observation = self.truncate_observation(observation)
             self.environment.obs = observation[:]
         observation = code(observation)
-        if not isinstance(action, np.ndarray):
-            action = np.array([action])
-        action = action.reshape(1, -1)
         if self.actions:
             penalty = np.absolute(action - self.actions[-1])
         else:
