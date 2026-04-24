@@ -60,10 +60,11 @@ def crbnmcts(
             if best_action is None:
                 best_action = environment.best_actions[environment.current_timestamp]
             environment.step(best_action)
-        if environment.score < environment.best_score:
-            environment.best_score = environment.score
-            environment.best_sequence = environment.sequence[:]
-            environment.best_actions = environment.actions[:]
+        # # Investigate next if clause, supposedly not needed
+        # if environment.score < environment.best_score:
+        #     environment.best_score = environment.score
+        #     environment.best_sequence = environment.sequence[:]
+        #     environment.best_actions = environment.actions[:]
         return (
             environment.best_sequence,
             environment.best_actions,
