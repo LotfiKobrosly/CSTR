@@ -1,8 +1,9 @@
 import numpy as np
+import gymnasium as gym
 import pcgym
 
 
-CURRENTLY_AVAILABLE_MODELS = [
+PC_GYM_MODELS = [
     "cstr",
     "first_order_system",
     "multistage_extraction",
@@ -35,6 +36,7 @@ def get_environment(
     match problem:
         case "cstr":
             function = create_cstr_environment
+            environment_type = "pc-gym"
         case "multistage_extraction":
             function = create_extraction_column_environment
         case "nonsmooth_control":

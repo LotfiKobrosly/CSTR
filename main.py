@@ -102,8 +102,8 @@ if __name__ == "__main__":
 
     # Iterating through different parameters
     nesting_levels = {
-        1: {"bandwidth": 25, "n_policies": 500, "half_life_divider": 1},
-        2: {"bandwidth": 20, "n_policies": 100, "half_life_divider": 5},
+        1: {"bandwidth": 20, "n_policies": 200, "half_life_divider": 1},
+        2: {"bandwidth": 8, "n_policies": 50, "half_life_divider": 5},
     }
 
     # Enumerating algorithms
